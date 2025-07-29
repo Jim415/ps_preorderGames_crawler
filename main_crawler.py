@@ -1,6 +1,7 @@
 import logging
 import time
 import re
+import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -200,31 +201,39 @@ Please check the crawler.log file for more detailed information.
                         # Calculate absolute rank across all pages
                         display_rank = (page_num - 1) * games_per_page + page_index + 1
                         
-                        # Extract game name using the exact selector from HTML analysis
-                        game_name = None
+                        # Extract product ID from data-telemetry-meta attribute instead of game name
+                        game_name = ""
                         
-                        # Look for the product name span within this tile
-                        name_selectors = [
-                            f'span[data-qa*="productTile{page_index}#product-name"]',
-                            'span[data-qa*="#product-name"]',
-                            'span[data-qa*="product-name"]'
-                        ]
-                        
-                        for selector in name_selectors:
-                            name_element = game_element.select_one(selector)
-                            if name_element:
-                                game_name = name_element.get_text(strip=True)
-                                break
-                        
-                        # Fallback: look for any span with product name in nearby elements
-                        if not game_name:
-                            name_element = game_element.find('span', {'data-qa': re.compile(r'.*product-name.*')})
-                            if name_element:
-                                game_name = name_element.get_text(strip=True)
-                        
-                        if not game_name:
-                            logging.warning(f"Could not extract game name from element {page_index} on page {page_num}")
-                            continue
+                        try:
+                            # Find the <a> tag within this game tile
+                            link_element = game_element.find('a')
+                            if link_element:
+                                # Get the data-telemetry-meta attribute
+                                telemetry_meta = link_element.get('data-telemetry-meta')
+                                if telemetry_meta:
+                                    # Parse the JSON string
+                                    telemetry_data = json.loads(telemetry_meta)
+                                    # Extract the "id" value
+                                    game_name = telemetry_data.get('id', '')
+                                    
+                                    if game_name:
+                                        logging.debug(f"Successfully extracted product ID: {game_name}")
+                                    else:
+                                        logging.warning(f"No 'id' found in telemetry data for element {page_index} on page {page_num}")
+                                else:
+                                    logging.warning(f"No data-telemetry-meta attribute found for element {page_index} on page {page_num}")
+                            else:
+                                logging.warning(f"No <a> tag found for element {page_index} on page {page_num}")
+                                
+                        except json.JSONDecodeError as e:
+                            logging.warning(f"Failed to parse JSON from data-telemetry-meta for element {page_index} on page {page_num}: {e}")
+                            game_name = ""
+                        except AttributeError as e:
+                            logging.warning(f"Attribute error extracting product ID for element {page_index} on page {page_num}: {e}")
+                            game_name = ""
+                        except Exception as e:
+                            logging.warning(f"Unexpected error extracting product ID for element {page_index} on page {page_num}: {e}")
+                            game_name = ""
                         
                         game_data = {
                             'region': region,

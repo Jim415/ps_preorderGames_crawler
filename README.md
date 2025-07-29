@@ -10,6 +10,7 @@ A comprehensive Python crawler that extracts pre-order game information from Pla
 - ✅ **Error handling**: Robust retry logic and error recovery
 - ✅ **Logging**: Comprehensive logging for monitoring
 - ✅ **Daily tracking**: Supports daily crawling with historical data
+- ✅ **Product ID extraction**: Extracts unique product identifiers for reliable data tracking
 
 ## Project Structure
 
@@ -117,6 +118,7 @@ FROM preorder_games
 WHERE region = 'en-us' AND crawl_date = CURDATE() 
 ORDER BY rank 
 LIMIT 10;
+-- Note: game_name field contains product IDs, not human-readable game names
 ```
 
 ## Database Schema
@@ -128,7 +130,7 @@ The crawler stores data in the `preorder_games` table:
 | id          | INT         | Auto-increment primary key            |
 | crawl_date  | DATE        | Date when the data was crawled        |
 | region      | VARCHAR(10) | Region code (e.g., 'en-us', 'ja-jp') |
-| game_name   | TEXT        | Name of the game                      |
+| game_name   | TEXT        | Product ID of the game (unique identifier) |
 | rank        | INT         | Display order/rank on the website     |
 
 ## Configuration Options
